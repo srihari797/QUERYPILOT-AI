@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   BrainCog,
-  CheckCircle2,
   Database,
   Loader2,
   MessageSquare,
