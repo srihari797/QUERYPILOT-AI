@@ -12,11 +12,13 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+*.env.txt
 frontend/.env
 frontend/.env.local
 frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
+frontend/.env.txt
 backend/.env
 
 # Python cache

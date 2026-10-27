@@ -14,7 +14,18 @@ const sourceDatabases = [
 
 const targetDatabases = ["MongoDB", "MySQL", "PostgreSQL", "SQLite", "Oracle", "SQL Server"];
 
-const displayValue = (value) => value || "";
+const displayValue = (value) => {
+  if (value === undefined || value === null) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+};
 
 const getConvertedOutput = (parsed) => {
   const normalized = parseN8nAIResponse(parsed);
@@ -23,17 +34,18 @@ const getConvertedOutput = (parsed) => {
     return "";
   }
 
-  return (
-    displayValue(normalized.converted_query) ||
-    displayValue(normalized.convertedQuery) ||
-    displayValue(normalized.optimized_query) ||
-    displayValue(normalized.generated_query) ||
-    displayValue(normalized.query) ||
-    displayValue(normalized.output) ||
-    displayValue(normalized.response) ||
-    displayValue(normalized.chat_response) ||
-    displayValue(normalized.summary)
-  );
+  const candidate =
+    normalized.converted_query !== undefined ? normalized.converted_query :
+    normalized.convertedQuery !== undefined ? normalized.convertedQuery :
+    normalized.optimized_query !== undefined ? normalized.optimized_query :
+    normalized.generated_query !== undefined ? normalized.generated_query :
+    normalized.query !== undefined ? normalized.query :
+    normalized.output !== undefined ? normalized.output :
+    normalized.response !== undefined ? normalized.response :
+    normalized.chat_response !== undefined ? normalized.chat_response :
+    normalized.summary;
+
+  return displayValue(candidate);
 };
 
 const QueryConverterPage = ({ onBack }) => {
@@ -94,12 +106,13 @@ const QueryConverterPage = ({ onBack }) => {
   };
 
   const handleCopy = async () => {
-    if (!convertedQuery) {
+    const textToCopy = displayValue(convertedQuery);
+    if (!textToCopy) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(convertedQuery);
+      await navigator.clipboard.writeText(textToCopy);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
@@ -234,7 +247,7 @@ const QueryConverterPage = ({ onBack }) => {
 
             <div className="code-block mt-4 p-5">
               <pre className="code-text m-0">
-                {convertedQuery || "Convert a query to see the output here."}
+                {displayValue(convertedQuery) || "Convert a query to see the output here."}
               </pre>
             </div>
           </section>

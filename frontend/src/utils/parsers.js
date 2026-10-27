@@ -115,7 +115,7 @@ export const normalizeAnalysisResult = (parsed) => {
       ""
     ),
     problems: safeList(normalized?.problems || normalized?.issues || normalized?.bottlenecks),
-    optimized_query: optimizedQuery,
+    optimized_query: safeString(optimizedQuery, ""),
     generated_query: safeString(normalized?.generated_query || normalized?.optimized_query || normalized?.optimized_sql || "", ""),
     index_suggestions: safeList(normalized?.index_suggestions || normalized?.indexes || normalized?.index_recommendations || normalized?.recommendations),
     performance_prediction: performancePrediction && typeof performancePrediction === "object"
@@ -128,7 +128,22 @@ export const normalizeAnalysisResult = (parsed) => {
     chart_metrics: normalized?.chart_metrics || {},
     beginner_explanation: safeString(normalized?.beginner_explanation || normalized?.explanation || normalized?.chat_response || "", ""),
     expert_explanation: safeString(normalized?.expert_explanation || normalized?.technical_explanation || "", ""),
-    recommendations: safeList(normalized?.recommendations || normalized?.actions || normalized?.suggestions || normalized?.next_steps),
+    explanation: safeString(
+      normalized?.explanation ||
+      normalized?.beginner_explanation ||
+      normalized?.expert_explanation ||
+      normalized?.summary ||
+      "",
+      ""
+    ),
+    action_items: safeList(normalized?.action_items || normalized?.actions || normalized?.recommendations),
+    recommendations: safeList(
+      normalized?.action_items ||
+      normalized?.recommendations ||
+      normalized?.actions ||
+      normalized?.suggestions ||
+      normalized?.next_steps
+    ),
     schema_assumptions: safeList(normalized?.schema_assumptions || normalized?.assumptions || normalized?.notes),
     agent_trace: safeList(normalized?.agent_trace || normalized?.trace || normalized?.steps),
     deployment_guard: normalized?.deployment_guard || {},

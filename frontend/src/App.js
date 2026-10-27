@@ -40,12 +40,43 @@ const safeString = (value, fallback = "") => {
   if (typeof value === "string") return value.trim() || fallback;
   if (typeof value === "number") return String(value);
   if (typeof value === "boolean") return value ? "true" : "false";
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return fallback;
+    }
+  }
   return fallback;
 };
 
 const safeList = (value) => {
-  if (Array.isArray(value)) return value.filter(Boolean);
+  if (Array.isArray(value)) {
+    return value
+      .filter((item) => item !== undefined && item !== null)
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (typeof item === "number" || typeof item === "boolean") return String(item);
+        if (typeof item === "object") {
+          return (
+            item.text ||
+            item.description ||
+            item.name ||
+            item.title ||
+            item.query ||
+            item.suggestion ||
+            item.problem ||
+            JSON.stringify(item, null, 2)
+          );
+        }
+        return String(item);
+      })
+      .filter(Boolean);
+  }
   if (typeof value === "string" && value.trim()) return [value.trim()];
+  if (typeof value === "object" && value !== null) {
+    return [safeString(value)];
+  }
   return [];
 };
 
