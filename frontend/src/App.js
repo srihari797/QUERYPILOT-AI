@@ -452,9 +452,12 @@ export default function App() {
         question: userMessage,
         schema: schemaInput.trim(),
         database_type: databaseType,
-        previous_analysis: result,
+        source_database: databaseType,
+        target_database: "",
         query: query.trim(),
         natural_language_request: userMessage,
+        conversion_request: "",
+        previous_analysis: result || {},
       };
 
       console.log("CHAT PAYLOAD:", chatPayload);
@@ -531,10 +534,15 @@ export default function App() {
 
       const payload = {
         mode: hasActualQuery && !isNaturalLanguageRequest ? "analyze_query" : "generate_query",
-        query: trimmedQuery,
+        query: trimmedQuery || naturalLanguageInput,
         schema: schemaInput.trim(),
         database_type: databaseType,
+        source_database: databaseType,
+        target_database: "",
         natural_language_request: naturalLanguageInput,
+        question: naturalLanguageInput || trimmedQuery,
+        conversion_request: "",
+        previous_analysis: result || {},
       };
 
       console.log("PAYLOAD SENT TO N8N:", payload);

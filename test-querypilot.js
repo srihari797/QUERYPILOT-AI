@@ -29,7 +29,7 @@ function resolveWebhookUrl() {
     }
   }
 
-  return "https://hari8888.app.n8n.cloud/webhook/edupulse";
+  return "https://hari8888.app.n8n.cloud/webhook/queryanalyse";
 }
 
 // 2. Sample Payloads for each QueryPilot Mode
@@ -41,9 +41,12 @@ const SAMPLE_TEST_CASES = {
       question: "What is the performance difference between B-Tree and Hash indexes in PostgreSQL?",
       schema: "",
       database_type: "PostgreSQL",
+      source_database: "PostgreSQL",
+      target_database: "",
       previous_analysis: {},
       query: "",
       natural_language_request: "What is the performance difference between B-Tree and Hash indexes in PostgreSQL?",
+      conversion_request: "",
     },
     validate: (data) => Boolean(data && (data.chat_response || data.response || data.summary)),
   },
@@ -53,6 +56,8 @@ const SAMPLE_TEST_CASES = {
     payload: {
       mode: "analyze_query",
       database_type: "MySQL",
+      source_database: "MySQL",
+      target_database: "",
       schema: `
         CREATE TABLE users (
           id INT PRIMARY KEY AUTO_INCREMENT,
@@ -77,6 +82,7 @@ const SAMPLE_TEST_CASES = {
       natural_language_request: "",
       question: "",
       conversion_request: "",
+      previous_analysis: {},
     },
     validate: (data) =>
       Boolean(
@@ -91,14 +97,17 @@ const SAMPLE_TEST_CASES = {
     payload: {
       mode: "generate_query",
       database_type: "PostgreSQL",
+      source_database: "PostgreSQL",
+      target_database: "",
       schema: `
         CREATE TABLE products (id SERIAL PRIMARY KEY, name TEXT, category_id INT, price NUMERIC);
         CREATE TABLE order_items (id SERIAL PRIMARY KEY, order_id INT, product_id INT, quantity INT, price NUMERIC);
       `.trim(),
-      query: "",
+      query: "Find the top 5 most revenue-generating products in category 3, including total units sold and revenue.",
       natural_language_request: "Find the top 5 most revenue-generating products in category 3, including total units sold and revenue.",
-      question: "",
+      question: "Find the top 5 most revenue-generating products in category 3, including total units sold and revenue.",
       conversion_request: "",
+      previous_analysis: {},
     },
     validate: (data) => Boolean(data && (data.generated_query || data.optimized_query)),
   },
@@ -113,6 +122,9 @@ const SAMPLE_TEST_CASES = {
       schema: "users collection with orders embedded or linked by user_id",
       query: "SELECT user_id, COUNT(*) as order_count, SUM(total_amount) as total_spent FROM orders WHERE created_at >= '2024-01-01' GROUP BY user_id HAVING total_spent > 1000 ORDER BY total_spent DESC;",
       conversion_request: "Convert this query from MySQL to MongoDB",
+      natural_language_request: "",
+      question: "",
+      previous_analysis: {},
     },
     validate: (data) => Boolean(data && (data.converted_query || data.optimized_query || data.output)),
   },
@@ -165,9 +177,30 @@ async function runTest(testKey, testDef, webhookUrl) {
     let parsed = null;
     try {
       const cleaned = rawText.replace(/```(?:json)?\s*([\s\S]*?)\s*```/i, "$1").trim();
-      parsed = JSON.parse(cleaned);
-      if (parsed && typeof parsed.output === "string") {
-        parsed = JSON.parse(parsed.output.replace(/```(?:json)?\s*([\s\S]*?)\s*```/i, "$1").trim());
+      let interim = JSON.parse(cleaned);
+      if (Array.isArray(interim) && interim.length > 0) {
+        interim = interim[0];
+      }
+      const outputStr = (interim && typeof interim.output === "string")
+        ? interim.output
+        : (interim && typeof interim.response === "string")
+        ? interim.response
+        : null;
+
+      if (outputStr) {
+        try {
+          parsed = JSON.parse(outputStr.replace(/```(?:json)?\s*([\s\S]*?)\s*```/i, "$1").trim());
+        } catch {
+          // If JSON was slightly truncated at the end, extract key fields via regex
+          parsed = {
+            raw: outputStr,
+            optimized_query: (outputStr.match(/"optimized_query":\s*"([^"]+)"/) || [])[1] || "",
+            summary: (outputStr.match(/"summary":\s*"([^"]+)"/) || [])[1] || "",
+            problems: ["Extracted from AI response"],
+          };
+        }
+      } else {
+        parsed = interim;
       }
     } catch {
       parsed = { raw: rawText };

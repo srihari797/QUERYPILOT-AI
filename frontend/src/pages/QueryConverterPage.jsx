@@ -77,6 +77,9 @@ const QueryConverterPage = ({ onBack }) => {
         query: sourceQuery,
         schema: schemaInput,
         conversion_request: `Convert this query from ${sourceDatabase} to ${targetDatabase}`,
+        question: "",
+        natural_language_request: "",
+        previous_analysis: {},
       };
 
       const response = await callQueryPilotWebhook(payload);
