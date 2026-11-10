@@ -35,6 +35,22 @@ describe("QueryPilot AI - Parsers & Formatters Test Suite", () => {
       expect(parsed.summary).toBe("Full table scan detected.");
     });
 
+    test("unwraps stringified n8n outer envelope string with inner output", () => {
+      const rawString = JSON.stringify({
+        output: JSON.stringify({
+          mode: "analyze_query",
+          summary: "Indexed scan enabled.",
+          optimized_query: "SELECT id FROM users WHERE status = 'active';",
+          problems: ["No index on status"],
+        }),
+      });
+      const parsed = parseN8nAIResponse(rawString);
+      expect(parsed.mode).toBe("analyze_query");
+      expect(parsed.summary).toBe("Indexed scan enabled.");
+      expect(parsed.optimized_query).toBe("SELECT id FROM users WHERE status = 'active';");
+      expect(parsed.problems).toEqual(["No index on status"]);
+    });
+
     test("handles null or undefined input safely", () => {
       expect(parseN8nAIResponse(null)).toBeNull();
       expect(parseN8nAIResponse(undefined)).toBeNull();
