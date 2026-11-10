@@ -29,7 +29,7 @@ function resolveWebhookUrl() {
     }
   }
 
-  return "https://hari8888.app.n8n.cloud/webhook/eaa03846-5945-467d-9538-67699c4d6384";
+  return "https://hari8888.app.n8n.cloud/webhook/edupulse";
 }
 
 // 2. Sample Payloads for each QueryPilot Mode

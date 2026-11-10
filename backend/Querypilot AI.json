@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "eaa03846-5945-467d-9538-67699c4d6384",
+        "path": "edupulse",
         "responseMode": "lastNode",
         "options": {}
       },
@@ -16,7 +16,7 @@
         0,
         112
       ],
-      "webhookId": "eaa03846-5945-467d-9538-67699c4d6384"
+      "webhookId": "edupulse"
     },
     {
       "parameters": {
