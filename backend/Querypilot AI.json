@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "queryanalyse",
+        "path": "eaa03846-5945-467d-9538-67699c4d6384",
         "responseMode": "lastNode",
         "options": {}
       },
@@ -16,7 +16,7 @@
         0,
         112
       ],
-      "webhookId": "1b1ae739-86f1-4df9-a68c-df9c2fd2ee1d"
+      "webhookId": "eaa03846-5945-467d-9538-67699c4d6384"
     },
     {
       "parameters": {
