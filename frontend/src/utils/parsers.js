@@ -357,16 +357,35 @@ export const normalizeAnalysisResult = (parsed) => {
 export const extractChatMessage = (parsed) => {
   const normalized = parseN8nAIResponse(parsed) || {};
 
-  return safeString(
+  let msg = safeString(
     normalized?.chat_response ||
-    normalized?.message ||
-    normalized?.response ||
-    normalized?.output ||
-    normalized?.summary ||
-    normalized?.optimized_query ||
-    normalized?.rewritten_query ||
-    normalized?.generated_query ||
-    "",
+      normalized?.message ||
+      normalized?.response ||
+      normalized?.expert_explanation ||
+      normalized?.beginner_explanation ||
+      normalized?.explanation ||
+      normalized?.summary ||
+      normalized?.output ||
+      normalized?.optimized_query ||
+      normalized?.rewritten_query ||
+      normalized?.generated_query ||
+      "",
     ""
   );
+
+  if (msg.trim().startsWith("{") && (msg.includes('"chat_response"') || msg.includes('"message"'))) {
+    const unwrapped = repairAndParseJson(msg);
+    if (unwrapped && typeof unwrapped === "object") {
+      msg = safeString(
+        unwrapped.chat_response ||
+          unwrapped.message ||
+          unwrapped.response ||
+          unwrapped.summary ||
+          "",
+        msg
+      );
+    }
+  }
+
+  return msg;
 };

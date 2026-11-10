@@ -85,31 +85,72 @@ const safeList = (value) => {
   return [];
 };
 
+const renderMarkdownInline = (text) => {
+  if (!text || typeof text !== "string") return text;
+  const tokens = [];
+  const regex = /(`[^`]+`|\*\*[^*]+\*\*)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(text.slice(lastIndex, match.index));
+    }
+    const token = match[0];
+    if (token.startsWith("`") && token.endsWith("`")) {
+      tokens.push(
+        <code
+          key={match.index}
+          className="rounded border border-cyan-500/30 bg-slate-900/90 px-1.5 py-0.5 font-mono text-xs text-cyan-300"
+        >
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else if (token.startsWith("**") && token.endsWith("**")) {
+      tokens.push(
+        <strong key={match.index} className="font-semibold text-white">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    tokens.push(text.slice(lastIndex));
+  }
+
+  return tokens.length > 0 ? tokens : text;
+};
+
 const renderChatContent = (content) => {
   const text = safeString(content, "");
   if (!text) {
     return <span>No response was returned.</span>;
   }
 
-  if (!text.includes("```")) {
-    return <span className="whitespace-pre-wrap">{text}</span>;
+  if (text.includes("```")) {
+    const parts = text.split(/```(?:[a-z0-9_-]+)?/gi);
+    return parts.map((part, index) => {
+      if (index % 2 === 1) {
+        return (
+          <pre
+            key={`block-${index}`}
+            className="my-2 overflow-x-auto rounded-xl border border-cyan-500/25 bg-slate-950/90 p-3 font-mono text-xs text-cyan-100 whitespace-pre-wrap"
+          >
+            {part.trim()}
+          </pre>
+        );
+      }
+      return (
+        <span key={`text-${index}`} className="whitespace-pre-wrap">
+          {renderMarkdownInline(part)}
+        </span>
+      );
+    });
   }
 
-  return text.split(/```/g).map((part, index) => {
-    if (index % 2 === 1) {
-      return (
-        <pre key={`${index}-${part}`} className="mt-2 overflow-x-auto rounded-lg bg-slate-950/80 p-3 text-xs text-cyan-100 whitespace-pre-wrap">
-          {part.trim()}
-        </pre>
-      );
-    }
-
-    return (
-      <span key={`${index}-${part}`} className="whitespace-pre-wrap">
-        {part}
-      </span>
-    );
-  });
+  return <span className="whitespace-pre-wrap">{renderMarkdownInline(text)}</span>;
 };
 
 const normalizeValue = (value, fallback = "—") => {
@@ -295,16 +336,24 @@ export default function App() {
         throw new Error(WEBHOOK_ERROR_MESSAGE);
       }
 
+      const lowerText = userMessage.toLowerCase();
+      const isMongoAction = lowerText.includes("mongo");
+      const isChecklistAction = lowerText.includes("checklist");
+
+      const questionToSend = isChecklistAction
+        ? "Give me the deployment checklist and safety recommendations for this query."
+        : userMessage;
+
       const chatPayload = {
         mode: "chat",
-        question: userMessage,
+        question: questionToSend,
         schema: schemaInput.trim(),
         database_type: databaseType,
         source_database: databaseType,
-        target_database: "",
-        query: query.trim(),
-        natural_language_request: userMessage,
-        conversion_request: "",
+        target_database: isMongoAction ? "mongodb" : "",
+        query: result?.optimized_query || query.trim(),
+        natural_language_request: questionToSend,
+        conversion_request: isMongoAction ? "Convert this query to MongoDB aggregation pipeline" : "",
         previous_analysis: result || {},
       };
 
@@ -316,7 +365,8 @@ export default function App() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(chatPayload),
-        }
+        },
+        45000
       );
 
       const text = await response.text();
@@ -855,8 +905,8 @@ export default function App() {
       </main>
 
       {chatOpen && (
-        <div className="fixed bottom-5 right-5 z-30 w-[min(92vw,380px)] rounded-[28px] border border-cyan-500/30 bg-slate-950/95 shadow-[0_30px_80px_rgba(15,23,42,0.75)]">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="fixed bottom-5 right-5 z-30 flex w-[min(94vw,420px)] flex-col rounded-[28px] border border-cyan-500/30 bg-slate-950/95 shadow-[0_30px_80px_rgba(15,23,42,0.85)] backdrop-blur">
+          <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
             <div>
               <p className="text-sm font-semibold text-white">AI Assistant</p>
               <p className="text-xs text-slate-300">Ask about rewrites, indexes, and explanations.</p>
@@ -870,14 +920,15 @@ export default function App() {
             </button>
           </div>
 
-          <div className="max-h-[320px] space-y-3 overflow-y-auto px-4 py-4">
+          <div className="max-h-[440px] min-h-[260px] space-y-3 overflow-y-auto px-4 py-4">
             <div className="flex flex-wrap gap-2">
               {quickActions.map((action) => (
                 <button
                   key={action}
                   type="button"
+                  disabled={chatLoading}
                   onClick={() => handleQuickAction(action)}
-                  className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100"
+                  className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {action}
                 </button>
@@ -887,9 +938,9 @@ export default function App() {
             {chatMessages.map((message, index) => (
               <div
                 key={`${message.role}-${index}`}
-                className={`rounded-2xl px-3 py-3 text-sm leading-6 ${
+                className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
                   message.role === "assistant"
-                    ? "bg-cyan-500/10 text-cyan-50"
+                    ? "border border-cyan-500/20 bg-cyan-950/20 text-cyan-50"
                     : "bg-slate-800 text-slate-100"
                 }`}
               >
@@ -897,9 +948,9 @@ export default function App() {
               </div>
             ))}
             {chatLoading && (
-              <div className="rounded-2xl bg-slate-800 px-3 py-3 text-sm text-slate-200">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm text-cyan-200">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
                   Thinking…
                 </div>
               </div>
@@ -907,13 +958,14 @@ export default function App() {
             <div ref={chatEndRef} />
           </div>
 
-          <div className="border-t border-slate-800 px-4 py-2">
+          <div className="border-t border-slate-800/80 px-4 py-2">
             <button
               type="button"
+              disabled={chatLoading}
               onClick={() => {
                 setChatMessages([{ role: "assistant", content: defaultAssistantMessage }]);
               }}
-              className="text-xs font-semibold text-slate-300"
+              className="text-xs font-semibold text-slate-400 hover:text-slate-200 disabled:opacity-50"
             >
               Clear chat
             </button>
@@ -923,13 +975,15 @@ export default function App() {
             <div className="flex gap-2">
               <input
                 value={chatInput}
+                disabled={chatLoading}
                 onChange={(event) => setChatInput(event.target.value)}
-                placeholder="Ask the assistant"
-                className="w-full rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
+                placeholder={chatLoading ? "Assistant is thinking…" : "Ask the assistant"}
+                className="w-full rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white outline-none focus:border-cyan-400 disabled:opacity-60"
               />
               <button
                 type="submit"
-                className="rounded-full bg-cyan-500 px-3 py-2 text-slate-950 transition hover:bg-cyan-400"
+                disabled={chatLoading || !chatInput.trim()}
+                className="rounded-full bg-cyan-500 px-3.5 py-2 text-slate-950 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
               </button>
