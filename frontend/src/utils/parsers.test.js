@@ -2,6 +2,7 @@ import {
   parseN8nAIResponse,
   normalizeAnalysisResult,
   extractChatMessage,
+  repairAndParseJson,
 } from "./parsers";
 import {
   safeString,
@@ -45,9 +46,38 @@ describe("QueryPilot AI - Parsers & Formatters Test Suite", () => {
       const parsed = parseN8nAIResponse(raw);
       expect(parsed.summary).toBe(raw);
     });
+
+    test("heals truncated JSON response cut off mid-list or mid-string", () => {
+      const truncated = `{ "mode": "analyze_query", "risk_score_before": "High", "risk_score_after": "Low", "summary": "The original query scans the entire orders table.", "problems": [ "SELECT * fetches unnecessary columns", "YEAR(o.created_at) prevents index usage" ], "optimized_query": "SELECT o.id, o.user_id FROM orders o WHERE o.created_at >= '2024-01-01';", "index_suggestions": [ "CREATE INDEX idx_orders_created_at ON orders(created_at);" ], "post_deployment_monitoring": [ "Track query latency", "Alert on any regression`;
+      
+      const parsed = parseN8nAIResponse(truncated);
+      expect(parsed).not.toBeNull();
+      expect(parsed.mode).toBe("analyze_query");
+      expect(parsed.summary).toBe("The original query scans the entire orders table.");
+      expect(parsed.optimized_query).toContain("SELECT o.id, o.user_id FROM orders o");
+      expect(parsed.problems).toEqual([
+        "SELECT * fetches unnecessary columns",
+        "YEAR(o.created_at) prevents index usage",
+      ]);
+      expect(parsed.index_suggestions).toEqual([
+        "CREATE INDEX idx_orders_created_at ON orders(created_at);",
+      ]);
+    });
   });
 
   describe("normalizeAnalysisResult", () => {
+    test("unpacks raw JSON string stored in summary property", () => {
+      const input = {
+        summary: `{ "mode": "analyze_query", "risk_score_before": "High", "risk_score_after": "Low", "summary": "Scans were eliminated using indexes.", "problems": ["Full table scan"], "optimized_query": "SELECT id FROM users WHERE status = 'active';" }`,
+      };
+
+      const normalized = normalizeAnalysisResult(input);
+      expect(normalized.summary).toBe("Scans were eliminated using indexes.");
+      expect(normalized.optimized_query).toBe("SELECT id FROM users WHERE status = 'active';");
+      expect(normalized.problems).toEqual(["Full table scan"]);
+      expect(normalized.risk_score_before).toBe("High");
+      expect(normalized.risk_score_after).toBe("Low");
+    });
     test("normalizes analyze_query response with performance predictions", () => {
       const sample = {
         mode: "analyze_query",
