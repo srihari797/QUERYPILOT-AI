@@ -95,9 +95,13 @@ const QueryConverterPage = ({ onBack }) => {
         setErrorMessage("The workflow returned no converted query.");
       }
     } catch (error) {
-      const message = error?.name === "AbortError"
+      let message = error?.name === "AbortError"
         ? "The AI Agent took too long to respond. Please retry in a moment."
         : error?.message || "The converter request could not be completed right now.";
+
+      if (message.includes("Failed to fetch")) {
+        message = "Failed to fetch: Your n8n webhook rejected the POST request or blocked CORS. In n8n, set Webhook HTTP Method to 'POST' and Respond to 'When Last Node Finishes'.";
+      }
 
       setErrorMessage(message);
     } finally {

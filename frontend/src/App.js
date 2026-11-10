@@ -485,9 +485,14 @@ export default function App() {
         addChatBubble("assistant", chatMessage);
       }
     } catch (error) {
-      const message = error?.name === "AbortError"
+      let message = error?.name === "AbortError"
         ? "The AI Agent is taking longer than expected. Please retry in a moment."
         : error?.message || "The chat request could not be completed right now.";
+
+      if (message.includes("Failed to fetch")) {
+        message = "Failed to fetch: Your n8n webhook rejected the POST request or blocked CORS. In n8n, set Webhook HTTP Method to 'POST' and Respond to 'When Last Node Finishes'.";
+      }
+
       addChatBubble("assistant", message);
     } finally {
       setChatLoading(false);
@@ -568,9 +573,14 @@ export default function App() {
         addChatBubble("assistant", assistantMessage);
       }
     } catch (error) {
-      const message = error?.name === "AbortError"
+      let message = error?.name === "AbortError"
         ? "The AI Agent took too long to respond. Please retry in a moment."
         : error?.message || "We could not reach the workflow. Verify the webhook URL and try again.";
+
+      if (message.includes("Failed to fetch")) {
+        message = "Failed to fetch: Your n8n webhook rejected the POST request or blocked CORS. In n8n, open the Webhook node and set HTTP Method to 'POST' and Respond to 'When Last Node Finishes', then Save & Activate the workflow.";
+      }
+
       setErrorMessage(message);
       setStatusMessage("Analysis paused due to an error.");
       addChatBubble("assistant", message);
